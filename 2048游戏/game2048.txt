@@ -1,0 +1,146 @@
+function game2048()
+% figure句柄
+h = figure('Name', '2048',...
+    'NumberTitle', 'off',...
+    'Menubar', 'none',...
+    'Position', [450 200 400 440],...
+    'KeyPressFcn', @keyevent);
+
+% 4*4格子，用按钮表示
+for m =1: 4
+    for n = 1: 4
+        uicontrol('Style', 'pushbutton',...
+            'String', '',...
+            'FontSize', 20,...
+            'Position', [(m-1)*80+40 (n-1)*80+40 80 80]);
+    end
+end
+hb = findall(gcf, 'Style', 'pushbutton');
+pbcolor = get(hb(1), 'BackgroundColor');
+numcolor = [0.11 0.23 0.57];
+
+% 分数text
+hscoretext = uicontrol('Style', 'text',...
+    'BackgroundColor', get(h, 'Color'),...
+    'String', '0',...
+    'FontSize', 20,...
+    'Position', [100 385 200 30]);
+
+% 初始化
+[mymatrix, score] = gameini();
+
+%% 初始化
+% 格子数据初始化，除随机两数外，其余为0（不显示）
+% 分数初始化
+function [mymatrix, score] = gameini()
+    set(hb, 'String', '')
+    set(hb, 'BackgroundColor', pbcolor)
+
+    mymatrix = zeros(4, 4);
+    
+    % 第一个数固定为2
+    inxrandi1 = randi(16);
+    mymatrix(inxrandi1) = 2;
+    set(hb(inxrandi1), 'String', mymatrix(inxrandi1));
+    set(hb(inxrandi1), 'BackgroundColor', mod(log2(mymatrix(inxrandi1))*numcolor,1));
+    
+    % 随机生成第二个数为2或4
+    inxrandi2 = randi(16);
+    while inxrandi2 == inxrandi1
+        inxrandi2 = randi(16);
+    end
+    mymatrix(inxrandi2) = randi([1, 2]) * 2;
+    set(hb(inxrandi2), 'String', mymatrix(inxrandi2));
+    set(hb(inxrandi2), 'BackgroundColor', mod(log2(mymatrix(inxrandi2))*numcolor,1));
+
+    score = 0;
+    set(hscoretext, 'String', '0')
+end
+
+
+%% 向右滑动，进行数据合并操作
+    function moveevent()
+        for i = 1: 4
+            myarray = mymatrix(i, :);
+            myarray(myarray==0) = [];
+
+            for j = 1: (length(myarray)-1)
+                if myarray(j) == myarray(j+1)
+                    myarray(j) = myarray(j) + myarray(j+1);
+                    myarray(j+1) = 0;
+                    score = score + myarray(j);
+                end
+            end
+
+            myarray(myarray==0) = [];
+            myarray((length(myarray)+1): 4) = 0;
+            mymatrix(i, :) = myarray;
+        end
+    end
+
+%% 按键检测
+% 判断按键，并进行相应操作（数据合并，分数更新），注意矩阵变化
+% 随机初始化一个新的数据
+% 判断游戏是否结束
+    function keyevent(~, event)
+        mymatrixtemp = mymatrix;
+
+        switch event.Key
+            case 'uparrow'
+                mymatrix = mymatrix';
+                moveevent();
+                mymatrix = mymatrix';
+            case 'leftarrow'
+                mymatrix = mymatrix(:, end:-1:1);
+                moveevent();
+                mymatrix = mymatrix(:, end:-1:1);
+            case 'downarrow'
+                mymatrix = mymatrix';
+                mymatrix = mymatrix(:, end:-1:1);
+                moveevent();
+                mymatrix = mymatrix(:, end:-1:1);
+                mymatrix = mymatrix';
+            case 'rightarrow'
+                moveevent();
+            case 'escape'
+                [mymatrix, score] = gameini();
+                return
+            otherwise
+                return
+        end
+
+        if isempty(find(mymatrixtemp ~= mymatrix, 1))
+            return
+        end
+
+        set(hscoretext, 'String', score)
+
+        inx = find(mymatrix == 0);
+        inxrandi = randi(length(inx));
+        mymatrix(inx(inxrandi)) = randi(2) * 2;
+        for i = 1: 16
+            if mymatrix(i) == 0
+                set(hb(i), 'String', '');
+                set(hb(i), 'BackgroundColor', pbcolor)
+            else
+                set(hb(i), 'String', mymatrix(i));
+                set(hb(i), 'BackgroundColor', mod(log2(mymatrix(i))*numcolor,1));
+            end
+        end
+
+        if isempty(find(mymatrix == 0, 1))
+            mymatrixtemp = [ones(1,6); ones(4,1) mymatrix ones(4,1); ones(1,6)];
+            for i = 2: 5
+                for j = 2: 5
+                    if mymatrixtemp(i,j)==mymatrixtemp(i+1,j)...
+                            || mymatrixtemp(i,j)==mymatrixtemp(i-1,j)...
+                            || mymatrixtemp(i,j)==mymatrixtemp(i,j+1)...
+                            || mymatrixtemp(i,j)==mymatrixtemp(i,j-1)
+                        return
+                    end
+                end
+            end
+            set(hscoretext, 'String', 'GAME OVER')
+        end
+    end
+end
